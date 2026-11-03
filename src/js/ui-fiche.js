@@ -1,7 +1,7 @@
 import { state } from './state.js';
 import { renderFiche, renderHistorique } from './ui-fiche.js';
 import { renderBadges } from './ui-fiche.js';
-
+w
 export function ouvrirFiche(clientId) {
 state.ficheclient = clientId;
 renderFiche();
@@ -34,3 +34,30 @@ document.getElementById("fiche-solde").textContent = `${solde.toFixed(2)} MAD`;
     renderBadges(conteneurBadges, client.statuts);
   }
 }
+
+export function fermerFiche() {
+    const dialogfiche = document.getElementById("dialog-fiche");
+    if (dialogfiche && dialogfiche.open) {
+        dialogfiche.close();
+    }
+}
+export function renderBadges(conteneur, statuts) {
+  if (!statuts || statuts.length === 0) return;
+
+  statuts.forEach(statut => {
+    const badge = document.createElement("span");
+    badge.className = "rounded px-2 py-0.5 text-xs font-semibold";
+    if (statut === "a-jour") {
+      badge.classList.add("bg-green-100", "text-green-800");
+      badge.textContent = "À jour";
+    } else if (statut === "en-dette") {
+      badge.classList.add("bg-karni-ambre/20", "text-karni-ambre");
+      badge.textContent = "En dette";
+    } else if (statut === "en-retard") {
+      badge.classList.add("bg-karni-rouge-clair", "text-karni-rouge");
+      badge.textContent = "En retard";
+    }
+    conteneur.appendChild(badge);
+  });
+}
+
