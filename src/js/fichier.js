@@ -1,4 +1,6 @@
 // verifier les donnees du carnet .
+import { state } from "./state.js";
+
 export const validerCarnet = (donnees) => {
     const erreurs = [];
     if(!donnees || typeof donnees !== "object" ||Array.isArray(donnees)){
@@ -90,3 +92,37 @@ export const validerCarnet = (donnees) => {
       carnet: erreurs.length === 0 ? donnees : null
     };
 }
+// exporter les données du carnet dans un fichier JSON
+export const exporterCarnet = () => {
+    const data ={
+        app:"karni",
+        version:1,
+        clients:state.clients,
+        operations:state.operations,
+        exporteLe: new Date().toISOString()
+    };
+    const json = JSON.stringify(data, null, 2);
+    const blob = new Blob([json], {type: "application/json"});
+    const url = URL.createObjectURL(blob);
+    const date = new Date().toISOString().slice(0, 10);
+    const nomFichier = `karni-${date}.json`;
+    const lien = document.createElement("a");
+    lien.href = url;
+    lien.download = nomFichier;
+    lien.click();
+    URL.revokeObjectURL(url);
+}
+// lire un fichier JSON importe et recuperer son contenu.
+export const lireFichierImport = async (fichier) => {
+    if(!fichier || fichier.type !== "application/json") {
+        throw new Error("Veuillez sélectionner  un fichier JSON valide.");
+    }
+    const contenu = await fichier.text();
+    const donnees = JSON.parse(contenu); 
+    const resultat = validerCarnet(donnees);
+    if(!resultat.valide){
+        throw new Error(resultat.erreurs.join("\n"));
+    }
+    return resultat.carnet;
+}
+// generer un resume du carnet avec le nombre de clients et  d'operations.
