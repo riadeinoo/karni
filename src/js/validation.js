@@ -31,11 +31,13 @@ const clients = [
   }
 ];
 
+import { soldeClient, operations } from "./calculs.js";
 
 function enCentimes(saisie){
-    saisie = saisie.replaceAll(',', '.')
-    let regex = /^\d+(?:[.,]\d+)?$/
+    saisie = String(saisie).trim().replaceAll(',', '.')
+    let regex = /^\d+(?:\.\d{1,2})?$/;
     if(regex.test(saisie)){
+        saisie = Number(saisie)
         return Math.round(saisie * 100)
     }
     else{
@@ -65,6 +67,7 @@ function aujourdhuiISO(){
 }
 //saise is an obj with nom, telephone, plafond/ clients is the array with all clients/ idEdite is the id of modified client, null if to-add
 //this function return two objects, valeurs which are values that passed, and errors
+//plafond currently is entered in MAD and stored in centimes
 function validerClient(saisie, clients,idEdite){
     let errors = {}
     let valeurs = {}
@@ -87,11 +90,11 @@ function validerClient(saisie, clients,idEdite){
         errors.plafond = "valeur invalide"
     }
     else{
-        valeurs.plafond = saisie.plafond
+        valeurs.plafond = enCentimes(saisie.plafond)
     }
     if(idEdite == null){
         for(let i = 0; i<clients.length; i++){
-            if(clients[i].nom == normaliserText(saisie.nom)){
+            if(normaliserText(clients[i].nom) == normaliserText(saisie.nom)){
                 errors.nom = "Ce nom deja Exist"
                 break;
             }
@@ -116,8 +119,61 @@ function validerClient(saisie, clients,idEdite){
             errors.id = "Ce id n'exist pas"
         }
     }
-    return {errors, valeurs}
+    return {valeurs, errors}
 }
 
+function validerOperation(saisie, client, operations) {
+    let montant = enCentimes(saisie.montant)
+    const errors = {}
+    const valeurs = {}
+    if(montant == null || montant < 1 || montant > 1000000  ){
+        errors.montant = "montant invalide(entre 0.01 et 10 000 MAD"
+    }
+    if(saisie.type != "achat" && saisie.type != "remboursement"){
+        errors.type = "ce type n'exist pas"
+    }
+    else{
+        if(!client || client.id == null){
+            errors.clientId = "le client n'exist pas!"
+        }
+        else{
+            valeurs.clientId = client.id
+            let solde = soldeClient(client.id, operations)
+            if(saisie.type == "achat"){
+                if(Number(solde) + montant > client.plafond){
+                    errors.montant = "cette montant a depasser le plafond de client"
+                }
+                else{
+                    valeurs.montant = montant;
+                }
+            }
+            else{
+                if(montant > solde){
+                    errors.montant = "la valeur depasse kridi de client"
+                }
+                else{
+                    valeurs.montant = montant
+                }
+            }
+        }
+    }
+    if(saisie.libelle == null || saisie.libelle.length < 2 || saisie.libelle.length>60){
+        errors.libelle = "Nombre de characters entre 2 et 60"
+    }
+    else{
+        valeurs.libelle = saisie.libelle
+    }
+    for(let i = 0 ; i<operations.length; i++){
+        if(operations[i].id == saisie.id){
+            errors.id = "ce id deja exists"
+            break;
+        }
+    }
+    if(!errors.id){
+        valeurs.id = saisie.id
+    }
+    //add date validation
 
+    return {valeurs, errors}
 
+}
