@@ -1,5 +1,7 @@
 // verifier les donnees du carnet .
 import { state } from "./state.js";
+import { sauvegarder } from "./storage.js";
+import { confirmer } from "./ui-confirmation.js";
 
 export const validerCarnet = (donnees) => {
     const erreurs = [];
@@ -113,16 +115,61 @@ export const exporterCarnet = () => {
     URL.revokeObjectURL(url);
 }
 // lire un fichier JSON importe et recuperer son contenu.
-export const lireFichierImport = async (fichier) => {
-    if(!fichier || fichier.type !== "application/json") {
+export const lireFichierImport = (fichier) => {
+    if(!fichier || (fichier.type !== "application/json" && !fichier.name.toLowerCase().endsWith(".json"))){
         throw new Error("Veuillez sélectionner  un fichier JSON valide.");
     }
-    const contenu = await fichier.text();
-    const donnees = JSON.parse(contenu); 
-    const resultat = validerCarnet(donnees);
-    if(!resultat.valide){
-        throw new Error(resultat.erreurs.join("\n"));
-    }
-    return resultat.carnet;
+    return new Promise((resolve,reject) => {
+        const lecteur = new FileReader();
+        lecteur.onload = () => {
+            try{
+                const donnees = JSON.parse(lecteur.result);
+                const resultat = validerCarnet(donnees);
+                if(!resultat.valide){
+                    reject(new Error(resultat.erreurs.join("\n")));
+                    return;
+                }
+                resolve(resultat.carnet);
+            }catch(erreur){
+                reject(erreur);
+            }
+        };
+        lecteur.onerror = () => {
+            reject(new Error("Erreur lors de la lecture du fichier."));
+        };
+        lecteur.readAsText(fichier);
+    });        
 }
+
 // generer un resume du carnet avec le nombre de clients et  d'operations.
+export const resumeCarnet = (carnet) => {
+    return `${carnet.clients.length} clients, ${carnet.operations.length} opérations`;
+}
+// Gérer l'importation d'un carnet JSON après validation et confirmation de l'utilisateur.
+export const gererImport= async () =>{
+    const inputImport = document.getElementById("import-fichier");
+    const fichier = inputImport.files[0];
+    if(!fichier){
+        return;
+    }
+    try{
+        const carnet = await lireFichierImport(fichier);
+        const resume = resumeCarnet(carnet);
+        const accepte = await confirmer({
+            titre:"importer un carnet",
+            message:"voules-vous remplacer le carnet actuel ?",
+            details:resume
+        });
+        if(!accepte){
+            return;
+        }
+        state.clients = carnet.clients;
+        state.operations = carnet.operations;
+        const sauvegardeReussie = sauvegarder();
+        if(!sauvegardeReussie){
+            throw new Error("Impossible de sauvegarder le carnet.");
+        }
+    } catch (erreur) {
+        console.error("Erreur lors de l'importation :", erreur.message);
+    }
+}
