@@ -17,12 +17,8 @@ export function fermerFiche() {
 
 function afficherFiche(visible) {
   const fiche = $("fiche-client");
-  if (fiche instanceof HTMLDialogElement) {
-    if (visible && !fiche.open) fiche.showModal();
-    if (!visible && fiche.open) fiche.close();
-  } else {
-    fiche.hidden = !visible;
-  }
+  if (visible && !fiche.open) fiche.showModal();
+  if (!visible && fiche.open) fiche.close();
 }
 
 export function renderFiche() {
@@ -47,6 +43,7 @@ const client = state.clients.find(c => c.id === ficheClientId);
   renderBadges($("fiche-badges"), [statut]);
   renderHistorique(client.id);
 }
+
 const BADGES = {
   "À jour": {texte: "À jour",classe: "badge-a-jour"},
   "En dette": {texte: "En dette",classe: "badge-en-dette"},
@@ -66,7 +63,6 @@ export function renderBadges(conteneur, statuts) {
 
 export function renderHistorique(clientId) {
   const liste = $("historique");
-  const modele = $("modele-operation");
   liste.replaceChildren();
 
   const ops = obtenirState().operations
@@ -76,10 +72,10 @@ export function renderHistorique(clientId) {
   $("historique-vide").hidden = ops.length > 0;
 
   for (const op of ops) {
-    const li = modele.content.cloneNode(true).firstElementChild;
-    li.dataset.operationId = op.id;
-    li.classList.add(op.type === "achat" ? "operation-achat" : "operation-remboursement");
+    const li = $("modele-operation").content.cloneNode(true).firstElementChild;
     const nom = op.libelle || (op.type === "achat" ? "Achat" : "Remboursement");
+    li.dataset.operationId = op.id;
+    li.classList.add("operation-" + op.type);
     li.querySelector(".operation-libelle").textContent = nom;
     li.querySelector(".operation-date").textContent = op.date;
     li.querySelector(".operation-montant").textContent = validation.formaterMAD(op.montant);
@@ -87,5 +83,3 @@ export function renderHistorique(clientId) {
     liste.append(li);
   }
 }
-
-
