@@ -1,63 +1,90 @@
-import { state } from './state.js';
-import { renderFiche, renderHistorique } from './ui-fiche.js';
-import { renderBadges } from './ui-fiche.js';
-w
+import { state } from "./state.js";
+import * as calculs from "./calculs.js";
+import * as validation from "./validation.js";
+
+const $ = id => document.getElementById(id);
+
 export function ouvrirFiche(clientId) {
-state.ficheclient = clientId;
-renderFiche();
-renderHistorique(clientId);
-
-const dialogfiche = document.getElementById("dialog-fiche");
-if (dialogfiche && !dialogfiche.open) {
-    dialogfiche.showModal();
-}
-}
-
-export function renderfiche() {
-    const clientId =   state.clients.find(c => c.id === state.ficheClientId) ? state.ficheClientId : null;
-    if (!clientId) return;
-
-document.getElementById("fiche-nom").textContent = Clients-nom;
-document.getElementById("fiche-telephone").textContent = Clients-telephone;
-
-const solde = client.solde || 0;
-const plafond = client.plafond || 0;
-const disponible = plafond - solde;
-
-document.getElementById("fiche-solde").textContent = `${solde.toFixed(2)} MAD`;
-  document.getElementById("fiche-plafond").textContent = `${plafond.toFixed(2)} MAD`;
-  document.getElementById("fiche-disponible").textContent = `${disponible.toFixed(2)} MAD`;
-
-  const conteneurBadges = document.getElementById("fiche-badges");
-  if (conteneurBadges) {
-    conteneurBadges.innerHTML = "";
-    renderBadges(conteneurBadges, client.statuts);
-  }
+  state.ficheClientId = clientId;
+  renderFiche();
 }
 
 export function fermerFiche() {
-    const dialogfiche = document.getElementById("dialog-fiche");
-    if (dialogfiche && dialogfiche.open) {
-        dialogfiche.close();
-    }
+  state.ficheClientId = null;
+  renderFiche();
 }
-export function renderBadges(conteneur, statuts) {
-  if (!statuts || statuts.length === 0) return;
 
-  statuts.forEach(statut => {
-    const badge = document.createElement("span");
-    badge.className = "rounded px-2 py-0.5 text-xs font-semibold";
-    if (statut === "a-jour") {
-      badge.classList.add("bg-green-100", "text-green-800");
-      badge.textContent = "À jour";
-    } else if (statut === "en-dette") {
-      badge.classList.add("bg-karni-ambre/20", "text-karni-ambre");
-      badge.textContent = "En dette";
-    } else if (statut === "en-retard") {
-      badge.classList.add("bg-karni-rouge-clair", "text-karni-rouge");
-      badge.textContent = "En retard";
-    }
-    conteneur.appendChild(badge);
-  });
+function afficherFiche(visible) {
+  const fiche = $("fiche-client");
+  if (fiche instanceof HTMLDialogElement) {
+    if (visible && !fiche.open) fiche.showModal();
+    if (!visible && fiche.open) fiche.close();
+  } else {
+    fiche.hidden = !visible;
+  }
 }
+
+export function renderFiche() {
+  const client = state.clients.find(c => c.id === state.ficheClientId);
+
+  if (!client) {
+    afficherFiche(false);
+    return;
+  }
+  afficherFiche(true);
+
+  const solde = calculs.soldeClient(client.id, state.operations);
+  const disponible = calculs.creditDisponible(client, state.operations);
+  const statuts = calculs.statutsClient(client, state.operations, validation.aujourdhuiISO());
+
+  $("fiche-nom").textContent = client.nom;
+  $("fiche-telephone").textContent = client.telephone || "Pas de téléphone";
+  $("fiche-solde").textContent = validation.formaterMAD(solde);
+  $("fiche-plafond").textContent = validation.formaterMAD(client.plafond);
+  $("fiche-disponible").textContent = validation.formaterMAD(disponible);
+
+  renderBadges($("fiche-badges"), statuts);
+  renderHistorique(client.id);
+}
+const BADGES = {
+  "a-jour":    { texte: "À jour",          classe: "badge-a-jour" },
+  "en-dette":  { texte: "En dette",        classe: "badge-en-dette" },
+  "en-retard": { texte: "En retard",       classe: "badge-en-retard" },
+  "plafond":   { texte: "Plafond atteint", classe: "badge-plafond" },
+};
+
+export function renderBadges(conteneur, statuts) {
+  conteneur.replaceChildren();
+  for (const s of statuts) {
+    const span = document.createElement("span");
+    span.className = `badge ${BADGES[s].classe}`;
+    span.textContent = BADGES[s].texte;
+    conteneur.append(span);
+  }
+}
+
+export function renderHistorique(clientId) {
+  const liste = $("historique");
+  const modele = $("modele-operation");
+  liste.replaceChildren();
+
+  const ops = state.operations
+    .filter(o => o.clientId === clientId)
+    .sort((a, b) => b.date.localeCompare(a.date));
+
+  $("historique-vide").hidden = ops.length > 0;
+
+  for (const op of ops) {
+    const li = modele.content.cloneNode(true).firstElementChild;
+    li.dataset.operationId = op.id;
+    li.classList.add(op.type === "achat" ? "operation-achat" : "operation-remboursement");
+    const nom = op.libelle || (op.type === "achat" ? "Achat" : "Remboursement");
+    li.querySelector(".operation-libelle").textContent = nom;
+    li.querySelector(".operation-date").textContent = op.date;
+    li.querySelector(".operation-montant").textContent = validation.formaterMAD(op.montant);
+    li.querySelector(".nom-sr").textContent = " " + nom;
+    liste.append(li);
+  }
+}
+
 
