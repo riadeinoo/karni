@@ -2,6 +2,7 @@
 import { state } from "./state.js";
 import { sauvegarder } from "./storage.js";
 import { confirmer } from "./ui-confirmation.js";
+import { creerDemo } from "./demo.js";
 
 export const validerCarnet = (donnees) => {
     const erreurs = [];
@@ -173,3 +174,47 @@ export const gererImport= async () =>{
         console.error("Erreur lors de l'importation :", erreur.message);
     }
 }
+// Charger les données de démonstration après confirmation de l'utilisateur
+export const gererChargerDemo = async () => {
+    try {
+        const carnetDemo = creerDemo();
+        const accepte = await confirmer({
+            titre: "charger la démonstration ",
+            message:"Voulez-vous remplacer le carnet actuel par les données de démonstration ?",
+            details: resumeCarnet(carnetDemo)
+        });
+        if (!accepte){
+        return;
+        }
+        state.clients = carnetDemo.clients;
+        state.operations = carnetDemo.operations;
+        const sauvegardeReussie = sauvegarder();
+        if(!sauvegardeReussie){
+           throw new Error("Impossible de sauvegarder les données de démonstration.")
+        }
+    }catch(erreur){
+        console.error("Erreur lors du chargement de la démo :", erreur.message);
+    }
+}
+// Vider toutes les données du carnet après confirmation de l'utilisateur
+export const gererViderCarnet = async () => {
+    try{
+        const accepte = await confirmer({
+            titre: "Vider le carnet",
+            message: "Voulez-vous vraiment supprimer toutes les données du carnet ?",
+            details: resumeCarnet(state)
+        });
+        if(!accepte){
+            return;
+        }
+        state.clients = [];
+        state.operations = [];
+        const sauvegardeReussie = sauvegarder();
+        if(!sauvegardeReussie){
+            throw new Error("Impossible de sauvegarder le carnet vide.");
+        }
+    }catch(erreur){
+        console.error("Erreur lors de la suppression du carnet :", erreur.message);
+    }
+}
+
