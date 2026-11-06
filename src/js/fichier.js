@@ -1,8 +1,9 @@
 // verifier les donnees du carnet .
-import { state } from "./state.js";
+import { obtenirState, definirState } from "./state.js";
 import { sauvegarder } from "./storage.js";
 import { confirmer } from "./ui-confirmation.js";
 import { creerDemo } from "./demo.js";
+import {afficherNotification} from "./ui-clients.js";
 
 export const validerCarnet = (donnees) => {
     const erreurs = [];
@@ -48,7 +49,8 @@ export const validerCarnet = (donnees) => {
         if(typeof client.plafond !=="number" ||client.plafond< 5000 ||client.plafond > 1000000 || !Number.isInteger(client.plafond)){
             erreurs.push(`clients[${index}].plafond: invalide.`);
         }
-        if(typeof client.creeLe !=="string" || !/^\d{4}-\d{2}-\d{2}$/.test(client.creeLe) || new Date(client.creeLe) > new Date()){
+        const date = new Date(client.creeLe + "T00:00:00Z");
+        if(typeof client.creeLe !=="string" || !/^\d{4}-\d{2}-\d{2}$/.test(client.creeLe)||Number.isNaN(date.getTime())||date.toISOString().slice(0, 10) !== client.creeLe || date > new Date()){
             erreurs.push(`clients[${index}].creeLe: invalide.`);
         }
     });
@@ -76,8 +78,8 @@ export const validerCarnet = (donnees) => {
         if(typeof operation.libelle !== "string" || operation.libelle.length > 60 || (operation.type === "achat" && operation.libelle.trim().length < 2)){
             erreurs.push(`operations[${index}].libelle: invalide.`);
         }
-
-        if(typeof operation.date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(operation.date) || new Date(operation.date) > new Date()){
+        const date = new Date(operation.date + "T00:00:00Z");
+        if(typeof operation.date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(operation.date) || Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== operation.date || date > new Date()){
             erreurs.push(`operations[${index}].date: invalide.`);
         }
         if (typeof operation.clientId === "string" && operation.clientId.trim() !== "") {
@@ -97,11 +99,12 @@ export const validerCarnet = (donnees) => {
 }
 // exporter les données du carnet dans un fichier JSON
 export const exporterCarnet = () => {
+    const carnet = obtenirState();
     const data ={
         app:"karni",
         version:1,
-        clients:state.clients,
-        operations:state.operations,
+        clients:carnet.clients,
+        operations:carnet.operations,
         exporteLe: new Date().toISOString()
     };
     const json = JSON.stringify(data, null, 2);
@@ -164,14 +167,13 @@ export const gererImport= async () =>{
         if(!accepte){
             return;
         }
-        state.clients = carnet.clients;
-        state.operations = carnet.operations;
+        definirState(carnet);
         const sauvegardeReussie = sauvegarder();
         if(!sauvegardeReussie){
             throw new Error("Impossible de sauvegarder le carnet.");
         }
     } catch (erreur) {
-        console.error("Erreur lors de l'importation :", erreur.message);
+        afficherNotification("Erreur lors de l'importation : " + erreur.message);
     }
 }
 // Charger les données de démonstration après confirmation de l'utilisateur
@@ -186,14 +188,13 @@ export const gererChargerDemo = async () => {
         if (!accepte){
         return;
         }
-        state.clients = carnetDemo.clients;
-        state.operations = carnetDemo.operations;
+        definirState(carnetDemo);
         const sauvegardeReussie = sauvegarder();
         if(!sauvegardeReussie){
            throw new Error("Impossible de sauvegarder les données de démonstration.")
         }
     }catch(erreur){
-        console.error("Erreur lors du chargement de la démo :", erreur.message);
+        afficherNotification("Erreur lors du chargement de la démo : " + erreur.message);
     }
 }
 // Vider toutes les données du carnet après confirmation de l'utilisateur
@@ -202,19 +203,22 @@ export const gererViderCarnet = async () => {
         const accepte = await confirmer({
             titre: "Vider le carnet",
             message: "Voulez-vous vraiment supprimer toutes les données du carnet ?",
-            details: resumeCarnet(state)
+            details: resumeCarnet(obtenirState())
         });
         if(!accepte){
             return;
         }
-        state.clients = [];
-        state.operations = [];
+        definirState({
+           app: "karni",
+           version: 1,
+           clients: [],
+           operations: []
+        });
         const sauvegardeReussie = sauvegarder();
         if(!sauvegardeReussie){
             throw new Error("Impossible de sauvegarder le carnet vide.");
         }
     }catch(erreur){
-        console.error("Erreur lors de la suppression du carnet :", erreur.message);
+        afficherNotification("Erreur lors de la suppression du carnet : " + erreur.message);
     }
 }
-

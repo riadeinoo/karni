@@ -87,7 +87,7 @@ export function estEnRetard(clientId, operations, aujourdHui) {
 export function calculerStatut(client, operations, aujourdHui) {
     const solde = calculerSolde(client.id, operations);
 
-    if (solde === 0) {
+    if (solde <= 0) {
         return "À jour";
     }
 

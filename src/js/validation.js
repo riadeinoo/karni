@@ -1,3 +1,4 @@
+import { calculerSolde } from "./calculs.js";
 export function enCentimes(saisie){
     saisie = String(saisie).trim().replaceAll(',', '.')
     let regex = /^\d+(?:\.\d{1,2})?$/;
@@ -103,7 +104,7 @@ export function validerOperation(saisie, client, operations) {
         }
         else{
             valeurs.clientId = client.id
-            let solde = soldeClient(client.id, operations)
+            let solde = calculerSolde(client.id, operations)
             if(saisie.type == "achat"){
                 if(Number(solde) + montant > client.plafond){
                     errors.montant = "cette montant a depasser le plafond de client"
@@ -122,11 +123,10 @@ export function validerOperation(saisie, client, operations) {
             }
         }
     }
-    if(saisie.libelle == null || saisie.libelle.length < 2 || saisie.libelle.length>60){
-        errors.libelle = "Nombre de characters entre 2 et 60"
-    }
-    else{
-        valeurs.libelle = saisie.libelle
+    if (typeof saisie.libelle !== "string" ||saisie.libelle.length > 60 ||(saisie.type === "achat" && saisie.libelle.trim().length < 2)) {
+        errors.libelle = "Le libellé doit contenir entre 2 et 60 caractères pour un achat.";
+    } else {
+        valeurs.libelle = saisie.libelle;
     }
     for(let i = 0 ; i<operations.length; i++){
         if(operations[i].id == saisie.id){

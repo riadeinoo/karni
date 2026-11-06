@@ -1,16 +1,17 @@
-import { state } from "./state.js";
+import { obtenirState } from "./state.js";
 import * as calculs from "./calculs.js";
 import * as validation from "./validation.js";
+let ficheClientId = null;
 
 const $ = id => document.getElementById(id);
 
 export function ouvrirFiche(clientId) {
-  state.ficheClientId = clientId;
+  ficheClientId = clientId;
   renderFiche();
 }
 
 export function fermerFiche() {
-  state.ficheClientId = null;
+  ficheClientId = null;
   renderFiche();
 }
 
@@ -25,32 +26,32 @@ function afficherFiche(visible) {
 }
 
 export function renderFiche() {
-  const client = state.clients.find(c => c.id === state.ficheClientId);
-
+const state = obtenirState();
+const client = state.clients.find(c => c.id === ficheClientId);
   if (!client) {
     afficherFiche(false);
     return;
   }
   afficherFiche(true);
 
-  const solde = calculs.soldeClient(client.id, state.operations);
-  const disponible = calculs.creditDisponible(client, state.operations);
-  const statuts = calculs.statutsClient(client, state.operations, validation.aujourdhuiISO());
-
+  const solde = calculs.calculerSolde(client.id, state.operations);
+  const disponible = calculs.calculerCreditDisponible(client, state.operations);
+  const statut = calculs.calculerStatut(client, state.operations, validation.aujourdhuiISO());
   $("fiche-nom").textContent = client.nom;
+  $("fiche-nom").dataset.clientId = client.id;
   $("fiche-telephone").textContent = client.telephone || "Pas de téléphone";
   $("fiche-solde").textContent = validation.formaterMAD(solde);
   $("fiche-plafond").textContent = validation.formaterMAD(client.plafond);
   $("fiche-disponible").textContent = validation.formaterMAD(disponible);
 
-  renderBadges($("fiche-badges"), statuts);
+  renderBadges($("fiche-badges"), [statut]);
   renderHistorique(client.id);
 }
 const BADGES = {
-  "a-jour":    { texte: "À jour",          classe: "badge-a-jour" },
-  "en-dette":  { texte: "En dette",        classe: "badge-en-dette" },
-  "en-retard": { texte: "En retard",       classe: "badge-en-retard" },
-  "plafond":   { texte: "Plafond atteint", classe: "badge-plafond" },
+  "À jour": {texte: "À jour",classe: "badge-a-jour"},
+  "En dette": {texte: "En dette",classe: "badge-en-dette"},
+  "En retard": {texte: "En retard",classe: "badge-en-retard"},
+  "Plafond atteint": {texte: "Plafond atteint",classe: "badge-plafond"}
 };
 
 export function renderBadges(conteneur, statuts) {
@@ -68,7 +69,7 @@ export function renderHistorique(clientId) {
   const modele = $("modele-operation");
   liste.replaceChildren();
 
-  const ops = state.operations
+  const ops = obtenirState().operations
     .filter(o => o.clientId === clientId)
     .sort((a, b) => b.date.localeCompare(a.date));
 

@@ -1,6 +1,3 @@
-import { creerDemo } from "./demo.js";
-
-const CLE_STOCKAGE = "karni:v1";
 let state;
 
 function obtenirDateAujourdhui() {
@@ -10,52 +7,25 @@ function obtenirDateAujourdhui() {
   const jour = String(date.getDate()).padStart(2, "0");
   return `${annee}-${mois}-${jour}`;
 }
-
-function estUnCarnetValide(donnees) {
-  return Boolean(
-    donnees &&
-    donnees.app === "karni" &&
-    donnees.version === 1 &&
-    Array.isArray(donnees.clients) &&
-    Array.isArray(donnees.operations)
-  );
-}
-
+// Initialiser les données en mémoire.
 export function initialiserState() {
-  try {
-    const donnees = localStorage.getItem(CLE_STOCKAGE);
+    state = {
+        app: "karni",
+        version: 1,
+        clients: [],
+        operations: []
+    };
 
-    if (donnees) {
-      const carnet = JSON.parse(donnees);
-
-      if (estUnCarnetValide(carnet)) {
-        state = carnet;
-        return { state, erreur: false };
-      }
-    }
-
-    state = creerDemo();
-    sauvegarderState();
     return { state, erreur: false };
-  } catch (erreur) {
-    state = creerDemo();
-    return { state, erreur: true };
-  }
 }
 
 export function obtenirState() {
   return state;
 }
-
-export function sauvegarderState() {
-  try {
-    localStorage.setItem(CLE_STOCKAGE, JSON.stringify(state));
-    return true;
-  } catch (erreur) {
-    return false;
-  }
+// Remplacer les données en mémoire par un nouveau carnet.
+export function definirState(carnet) {
+    state = carnet;
 }
-
 export function calculerSoldeClient(clientId) {
   let solde = 0;
 
@@ -156,7 +126,7 @@ export function ajouterClient(donnees) {
   };
 
   state.clients.push(client);
-  return sauvegarderState();
+  return true;
 }
 
 export function modifierClient(id, donnees) {
@@ -170,24 +140,23 @@ export function modifierClient(id, donnees) {
   client.telephone = donnees.telephone.trim();
   client.plafond = donnees.plafond;
 
-  return sauvegarderState();
+  return true;
 }
 
 export function supprimerClient(id) {
-  const solde = calculerSoldeClient(id);
+    const solde = calculerSoldeClient(id);
 
-  if (solde > 0) {
-    return { succes: false, raison: "dette" };
-  }
+    if (solde > 0) {
+        return { succes: false, raison: "dette" };
+    }
 
-  state.clients = state.clients.filter((client) => client.id !== id);
-  state.operations = state.operations.filter(
-    (operation) => operation.clientId !== id
-  );
+    state.clients = state.clients.filter(
+        (client) => client.id !== id
+    );
 
-  return { succes: sauvegardeApresModification(), raison: "" };
-}
+    state.operations = state.operations.filter(
+        (operation) => operation.clientId !== id
+    );
 
-function sauvegardeApresModification() {
-  return sauvegarderState();
+    return { succes: true, raison: "" };
 }

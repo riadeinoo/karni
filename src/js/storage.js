@@ -1,5 +1,5 @@
 
-import { state } from "./state.js";
+import { obtenirState, definirState } from "./state.js";
 import { validerCarnet } from "./fichier.js";
 
 // generer un identifient inuque
@@ -20,6 +20,7 @@ export const carnetVide = () => {
 // Sauvegarder les données du carnet dans le localStorage
 export const sauvegarder =() =>{
     try{
+        const state = obtenirState();
         const carnet = {
             app:"karni",
             version:1,
@@ -39,29 +40,28 @@ export const chargerCarnet = () => {
     try{
        donnees = localStorage.getItem("karni:v1");
        if(donnees===null){
-          state.clients = [];
-          state.operations = [];
-          return carnetVide();
+          const carnet = carnetVide();
+          definirState(carnet);
+          return {carnet,erreur:false};
         }
         const carnet = JSON.parse(donnees);
         const resultat = validerCarnet(carnet);
         if(!resultat.valide){
             throw new Error("carnet invalide");
         }
-        state.clients = carnet.clients;
-        state.operations = carnet.operations;
-        return carnet;
+        definirState(carnet);
+        return {carnet,erreur:false};
     }catch (erreur){
-        try{
-        localStorage.setItem("karni:sauvegarde-illisible",donnees);
-        }catch(erreurSauvegarde){
-            console.error("Impossible de sauvegarder la sauvegarde la copie:",erreurSauvegarde);
-
+        if(donnees!==null){
+           try{
+              localStorage.setItem("karni:sauvegarde-illisible",donnees);
+            }catch(erreurSauvegarde){
+               console.error("Impossible de sauvegarder la sauvegarde la copie:",erreurSauvegarde);
+            }
         }
-        state.clients = [];
-        state.operations = [];
-        return carnetVide();
+        const carnet = carnetVide();
+        definirState(carnet);
+        return {carnet,erreur :true};
     }        
-    
 } 
     
