@@ -1,70 +1,130 @@
-///this array is only for experemnting
-const operations = [
-  {
-    id: 1,
-    clientId: 1,
-    type: "achat",
-    montant: 15000, // 150 MAD
-    libelle: "Courses alimentaires",
-    date: "2026-11-01"
-  },
-  {
-    id: 2,
-    clientId: 1,
-    type: "achat",
-    montant: 7500, // 75 MAD
-    libelle: "Pain et lait",
-    date: "2026-11-02"
-  },
-  {
-    id: 3,
-    clientId: 1,
-    type: "remboursement",
-    montant: 5000, // 50 MAD
-    libelle: "Paiement partiel",
-    date: "2026-11-03"
-  },
-  {
-    id: 4,
-    clientId: 2,
-    type: "achat",
-    montant: 20000, // 200 MAD
-    libelle: "Produits ménagers",
-    date: "2026-11-02"
-  },
-  {
-    id: 5,
-    clientId: 2,
-    type: "remboursement",
-    montant: 10000, // 100 MAD
-    libelle: "Remboursement",
-    date: "2026-11-04"
-  },
-  {
-    id: 6,
-    clientId: 3,
-    type: "achat",
-    montant: 30000, // 300 MAD
-    libelle: "Achats divers",
-    date: "2026-11-04"
-  }
-];
+export function obtenirOperationsClient(clientId, operations) {
+    return operations.filter(op => op.clientId === clientId);
+}
 
-export{soldeClient, operations}
+export function calculerSolde(clientId, operations) {
+    let solde = 0;
 
-function soldeClient(clientId, operations){
-    return operations.reduce((solde, currentOp) => {
-        if(currentOp.clientId != clientId){
-            return solde
+    const operationsClient = obtenirOperationsClient(clientId, operations);
+
+    operationsClient.forEach(op => {
+        if (op.type === "achat") {
+            solde += op.montant;
+        } else if (op.type === "remboursement") {
+            solde -= op.montant;
         }
-        else if(currentOp.type = "achat"){
-            return solde + currentOp.montant
+    });
+
+    return solde;
+}
+
+export function calculerCreditDisponible(client, operations) {
+    return client.plafond - calculerSolde(client.id, operations);
+}
+
+export function obtenirHistorique(clientId, operations) {
+    return obtenirOperationsClient(clientId, operations)
+        .sort((a, b) => b.date.localeCompare(a.date));
+}
+
+export function obtenirDerniereOperation(clientId, operations) {
+    const historique = obtenirHistorique(clientId, operations);
+
+    if (historique.length === 0) {
+        return null;
+    }
+
+    return historique[0];
+}
+
+
+export function obtenirDateReference(clientId, operations) {
+    const operationsClient = obtenirOperationsClient(clientId, operations);
+
+    const remboursements = operationsClient.filter(op => op.type === "remboursement");
+
+    if (remboursements.length > 0) {
+        remboursements.sort((a, b) => b.date.localeCompare(a.date));
+        return remboursements[0].date;
+    }
+
+    const achats = operationsClient.filter(op => op.type === "achat");
+
+    if (achats.length > 0) {
+        achats.sort((a, b) => a.date.localeCompare(b.date));
+        return achats[0].date;
+    }
+
+    return null;
+}
+
+
+
+export function estEnRetard(clientId, operations, aujourdHui) {
+    const solde = calculerSolde(clientId, operations);
+
+    if (solde <= 0) {
+        return false;
+    }
+
+    const dateReference = obtenirDateReference(clientId, operations);
+
+    if (dateReference === null) {
+        return false;
+    }
+
+    const debut = new Date(dateReference);
+    const fin = new Date(aujourdHui);
+
+    const difference = fin - debut;
+    const jours = difference / (1000 * 60 * 60 * 24);
+
+    return jours > 30;
+}
+
+
+
+export function calculerStatut(client, operations, aujourdHui) {
+    const solde = calculerSolde(client.id, operations);
+
+    if (solde === 0) {
+        return "À jour";
+    }
+
+    if (solde >= client.plafond) {
+        return "Plafond atteint";
+    }
+
+    if (estEnRetard(client.id, operations, aujourdHui)) {
+        return "En retard";
+    }
+
+    return "En dette";
+}
+
+
+export function calculerTableauDeBord(clients, operations, aujourdHui) {
+    let totalDu = 0;
+    let clientsEnDette = 0;
+    let clientsEnRetard = 0;
+
+    clients.forEach(client => {
+        const solde = calculerSolde(client.id, operations);
+
+        if (solde > 0) {
+            totalDu += solde;
+            clientsEnDette++;
         }
-        else if(currentOp.type = "remboursement"){
-            return solde - currentOp.montant
+
+        if (estEnRetard(client.id, operations, aujourdHui)) {
+            clientsEnRetard++;
         }
-        else{
-            return solde
-        }
-    }, 0);
+    });
+
+    return {
+        totalDu: totalDu,
+        nombreClients: clients.length,
+        nombreClientsEnDette: clientsEnDette,
+        nombreClientsEnRetard: clientsEnRetard
+    };
 }
