@@ -260,7 +260,7 @@ Les autres User Stories ont été réparties selon les responsabilités de chaqu
 
 ## Vérifications et jeu d’essai
 
-Aucun script de test automatisé n’est défini dans `package.json`. Les validations indiquées comme exécutées ci-dessous ont été lancées avec Node.js contre les fonctions de validation et les fichiers JSON; elles ne couvrent pas les interactions réelles dans un navigateur.
+Aucun script de test automatisé n’est défini dans `package.json`. Les validations automatisées mentionnées ci-dessous ont été exécutées avec Node.js sur les fonctions de validation et les fichiers JSON. En complément, des tests manuels ont été réalisés directement dans le navigateur afin de vérifier les interactions réelles de l’application, notamment les formulaires, les opérations, l’importation des fichiers et la persistance des données après rechargement de la page.
 
 | # | Action testée | Résultat attendu | Résultat vérifié | Statut |
 | --- | --- | --- | --- | --- |
